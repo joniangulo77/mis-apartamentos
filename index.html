@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mis Apartamentos</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{--sand:#F5EFE6;--clay:#C4855A;--ocean:#2C6E8A;--dark:#1A1A2E;--text:#3D3D3D;--white:#FDFBF8;--shadow:rgba(44,110,138,0.15);--apt1:#2C6E8A;--apt2:#C4855A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--sand);color:var(--text);min-height:100vh;padding-bottom:80px}
+#setup{position:fixed;inset:0;background:var(--dark);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;color:white}
+#setup h1{font-family:'Playfair Display',serif;font-size:1.8rem;margin-bottom:8px;text-align:center}
+#setup .sub{font-size:0.85rem;opacity:0.6;text-align:center;margin-bottom:28px;line-height:1.6;max-width:320px}
+.sc{background:rgba(255,255,255,0.08);border-radius:16px;padding:20px;width:100%;max-width:380px;margin-bottom:16px}
+.sc label{color:rgba(255,255,255,0.65);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;display:block}
+.sc input{background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.2);color:white;border-radius:10px;font-size:0.9rem;padding:12px 14px;width:100%;font-family:'DM Sans',sans-serif}
+.sc input:focus{outline:none;border-color:var(--clay)}
+.btn-s{width:100%;max-width:380px;padding:15px;background:var(--clay);color:white;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;cursor:pointer}
+.snote{font-size:0.72rem;opacity:0.4;text-align:center;margin-top:14px;max-width:320px;line-height:1.5}
+.spill{display:flex;align-items:center;gap:5px;font-size:0.68rem;background:rgba(255,255,255,0.1);padding:4px 10px;border-radius:20px}
+.sdot{width:6px;height:6px;border-radius:50%;background:#aaa}
+.sdot.online{background:#5BC97A}.sdot.syncing{background:var(--clay);animation:pulse 1s infinite}.sdot.offline{background:#E07070}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+header{background:var(--dark);color:var(--white);padding:14px 20px 10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,0.3)}
+.hr{display:flex;justify-content:space-between;align-items:center}
+header h1{font-family:'Playfair Display',serif;font-size:1.35rem}
+.tabs{display:flex;background:var(--white);border-bottom:2px solid #e8e0d5;position:sticky;top:62px;z-index:99}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:0.72rem;font-weight:500;cursor:pointer;color:#999;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s}
+.tab.active{color:var(--ocean);border-bottom-color:var(--ocean)}
+.tc{display:none;padding:16px}.tc.active{display:block}
+.card{background:var(--white);border-radius:16px;padding:20px;box-shadow:0 4px 20px var(--shadow);margin-bottom:16px}
+.card h2{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:16px;color:var(--dark)}
+.fg{margin-bottom:14px}
+label{display:block;font-size:0.75rem;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px}
+input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #E0D8CE;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.95rem;background:var(--sand);color:var(--text);-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--ocean);background:var(--white)}
+textarea{resize:vertical;min-height:75px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tbox{background:linear-gradient(135deg,var(--dark),#2C4A6E);color:var(--white);border-radius:14px;padding:18px 20px;margin:16px 0}
+.tlabel{font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px}
+.tamount{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;margin-top:4px}
+.tgbp{font-size:1rem;opacity:0.6;margin-top:2px}.trate{font-size:0.68rem;opacity:0.45;margin-top:1px}
+.tbd{border-top:1px solid rgba(255,255,255,0.15);margin-top:10px;padding-top:10px}
+.brow{display:flex;justify-content:space-between;font-size:0.8rem;opacity:0.75;margin-bottom:4px}
+.brow.dr{color:#7ECFB0;opacity:1;font-weight:500}
+.brow.pr{opacity:1;font-weight:600;font-size:0.85rem;border-top:1px solid rgba(255,255,255,0.2);padding-top:6px;margin-top:2px}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:500;cursor:pointer}
+.btn-p{background:var(--clay);color:white;box-shadow:0 4px 15px rgba(196,133,90,0.4)}
+.ca{background:#FFF0F0;border:1.5px solid #E8B4B0;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.85rem;color:#8B2020;display:none;line-height:1.5}
+.dbox{background:#F0F7F4;border:1.5px solid #B5D9CC;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.dbox label{margin:0;text-transform:none;letter-spacing:0;font-size:0.88rem;color:#3D7A62;font-weight:500;flex:1}
+.dbox input{width:110px;padding:8px 10px;font-size:0.9rem;background:white;border-color:#B5D9CC;flex-shrink:0}
+.fr{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+.fb{padding:8px 16px;border-radius:20px;border:1.5px solid #D0C8BE;background:var(--white);font-size:0.8rem;font-weight:500;cursor:pointer;white-space:nowrap;color:#666}
+.fb.active{background:var(--dark);color:white;border-color:var(--dark)}
+.bbar{background:var(--white);border-radius:14px;padding:14px 16px;margin-bottom:16px;box-shadow:0 2px 12px var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.bbar p{font-size:0.78rem;color:#888;flex:1}
+.bbar p strong{display:block;font-size:0.85rem;color:var(--dark);margin-bottom:2px}
+.bbtns{display:flex;flex-direction:column;gap:6px}
+.bbtn{padding:7px 14px;border-radius:8px;border:none;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;white-space:nowrap}
+.bbtn-e{background:var(--ocean);color:white}.bbtn-i{background:#F0F7F4;color:#3D7A62;border:1.5px solid #B5D9CC}
+.ri{background:var(--white);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 2px 12px var(--shadow);border-left:4px solid var(--apt1);animation:si 0.3s ease}
+@keyframes si{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.ri.a2{border-left-color:var(--apt2)}
+.rh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.rg{font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:var(--dark)}
+.ra{font-size:0.7rem;padding:3px 10px;border-radius:20px;font-weight:500}
+.ra1{background:rgba(44,110,138,0.12);color:var(--apt1)}.ra2{background:rgba(196,133,90,0.12);color:var(--apt2)}
+.rd{font-size:0.82rem;color:#888;margin-bottom:8px}
+.rt{font-size:1.1rem;font-weight:600;color:var(--dark)}.rn{font-size:0.75rem;color:#aaa}
+.obs-box{margin-top:8px;padding:8px 10px;background:#F5F0EB;border-radius:8px;font-size:0.78rem;color:#666;border-left:3px solid #D0C0A8}
+.ndep{display:inline-flex;align-items:center;font-size:0.7rem;background:#FFF3E8;color:#A05A2C;border:1px solid #E8C8A8;border-radius:20px;padding:2px 8px;font-weight:500;margin-top:4px}
+.bdel{background:none;border:1.5px solid #E8D5D5;color:#C0605A;border-radius:8px;padding:6px 12px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif}
+.bedit{background:none;border:1.5px solid #C8D8E8;color:var(--ocean);border-radius:8px;padding:6px 12px;font-size:0.78rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-right:6px}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;display:flex;align-items:flex-end;animation:fi 0.2s}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+.mb{background:var(--sand);border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-height:90vh;overflow-y:auto}
+.mb h3{font-family:'Playfair Display',serif;font-size:1.15rem;color:var(--dark);margin-bottom:4px}
+.msub{font-size:0.78rem;color:#aaa;margin-bottom:18px}
+.econf{background:#FFF0F0;border:1.5px solid #E8B4B0;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:0.82rem;color:#8B2020;display:none}
+.mbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.bsave{padding:14px;border-radius:10px;border:none;background:var(--clay);color:white;font-family:'DM Sans',sans-serif;font-size:0.95rem;font-weight:500;cursor:pointer}
+.bcanc{padding:14px;border-radius:10px;border:1.5px solid #D0C8CE;background:var(--white);font-family:'DM Sans',sans-serif;font-size:0.95rem;cursor:pointer;color:var(--text)}
+.et{background:linear-gradient(135deg,var(--dark),#2C4A6E);color:white;border-radius:12px;padding:14px 16px;margin:12px 0}
+.etl{font-size:0.7rem;opacity:0.65;text-transform:uppercase;letter-spacing:1px}
+.eta{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;margin:2px 0 4px}
+.etd{font-size:0.72rem;opacity:0.65;line-height:1.6;white-space:pre-line}
+.cb{background:var(--white);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%}
+.cb h3{font-family:'Playfair Display',serif;font-size:1.1rem;margin-bottom:8px}
+.cb p{color:#888;font-size:0.85rem;margin-bottom:20px}
+.bdeld{padding:13px;border-radius:10px;border:none;background:#C0605A;color:white;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:500;cursor:pointer}
+.bkeep{padding:13px;border-radius:10px;border:1.5px solid #E0D8CE;background:none;font-family:'DM Sans',sans-serif;font-size:0.9rem;cursor:pointer}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ch h2{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--dark)}
+.cn{background:var(--white);border:1.5px solid #E0D8CE;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;color:var(--dark)}
+.cg{background:var(--white);border-radius:16px;overflow:hidden;box-shadow:0 4px 20px var(--shadow);margin-bottom:16px}
+.cdh{display:grid;grid-template-columns:repeat(7,1fr);background:var(--dark);color:white}
+.cdn{text-align:center;padding:10px 4px;font-size:0.7rem;font-weight:500;opacity:0.8}
+.cd{display:grid;grid-template-columns:repeat(7,1fr)}
+.cday{min-height:52px;padding:6px 4px;border:0.5px solid #F0EAE2;font-size:0.75rem;text-align:center}
+.cday.empty{background:#FDFAF7}.cday .dn{font-weight:500;color:#666;margin-bottom:2px}
+.cday.today .dn{background:var(--clay);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px}
+.dbs{display:flex;flex-direction:column;gap:1px}
+.dd{font-size:0.6rem;border-radius:3px;padding:1px 3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left}
+.dd1{background:rgba(44,110,138,0.15);color:var(--apt1)}.dd2{background:rgba(196,133,90,0.15);color:var(--apt2)}
+.cleg{display:flex;gap:16px;padding:12px 16px;background:var(--white);border-radius:12px;box-shadow:0 2px 10px var(--shadow);margin-bottom:12px}
+.li{display:flex;align-items:center;gap:8px;font-size:0.8rem}.ld{width:12px;height:12px;border-radius:3px}
+.es{text-align:center;padding:40px 20px;color:#aaa}.es .ic{font-size:3rem;margin-bottom:12px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--dark);color:white;padding:12px 24px;border-radius:24px;font-size:0.85rem;z-index:300;animation:ta 2.5s forwards;white-space:nowrap}
+@keyframes ta{0%{opacity:0;bottom:80px}15%{opacity:1;bottom:90px}75%{opacity:1}100%{opacity:0}}
+.yr-sel{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.yr-sel h2{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--dark)}
+.yr-btn{background:var(--white);border:1.5px solid #E0D8CE;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;color:var(--dark)}
+.total-anual{background:linear-gradient(135deg,var(--dark),#2C4A6E);color:white;border-radius:16px;padding:20px;margin-bottom:16px}
+.ta-label{font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px}
+.ta-amount{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;margin:6px 0 4px}
+.ta-split{display:flex;gap:16px;margin-top:12px;border-top:1px solid rgba(255,255,255,0.15);padding-top:12px}
+.ta-apt{flex:1;text-align:center}.ta-apt-name{font-size:0.7rem;opacity:0.6;text-transform:uppercase;letter-spacing:0.8px}
+.ta-apt-val{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:600;margin-top:2px}
+.ta-apt-val.v1{color:#7EC8E3}.ta-apt-val.v2{color:#F4C89A}
+.month-card{background:var(--white);border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:0 2px 12px var(--shadow)}
+.mc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.mc-month{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--dark)}
+.mc-total{font-size:1.1rem;font-weight:700;color:var(--dark)}
+.mc-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.mc-bar-label{font-size:0.72rem;color:#888;width:60px;flex-shrink:0}
+.mc-bar-wrap{flex:1;background:#F0EAE0;border-radius:4px;height:8px;overflow:hidden}
+.mc-bar-fill{height:100%;border-radius:4px}
+.mc-bar-fill.b1{background:var(--apt1)}.mc-bar-fill.b2{background:var(--apt2)}
+.mc-bar-val{font-size:0.72rem;font-weight:600;color:#555;width:60px;text-align:right;flex-shrink:0}
+.mc-detail{display:flex;justify-content:space-between;font-size:0.75rem;color:#aaa;border-top:1px solid #F0EAE0;padding-top:8px;margin-top:6px}
+.mc-nodata{text-align:center;padding:30px 20px;color:#bbb;font-size:0.85rem}
+</style>
+</head>
+<body>
+<div id="setup">
+  <h1>&#127958; Mis Apartamentos</h1>
+  <p class="sub">Escribe la misma clave en tu movil y en el de tu mujer para sincronizar las reservas.</p>
+  <div class="sc"><label>Clave secreta compartida</label><input type="text" id="setup-key" placeholder="Ej: albatros-clara-2024"></div>
+  <button class="btn-s" onclick="setupApp()">Entrar</button>
+  <p class="snote">Solo vosotros conoceis esta clave. Usadla en ambos moviles.</p>
+</div>
+<header>
+  <div class="hr">
+    <h1>&#127958; Mis Apartamentos</h1>
+    <div class="spill"><div class="sdot" id="sd"></div><span id="st" style="color:rgba(255,255,255,0.6)">...</span></div>
+  </div>
+</header>
+<div class="tabs">
+  <div class="tab active" onclick="showTab('nueva',this)">+ Nueva</div>
+  <div class="tab" onclick="showTab('reservas',this)">Reservas</div>
+  <div class="tab" onclick="showTab('cal',this)">Mes</div>
+  <div class="tab" onclick="showTab('ingresos',this)">Ingresos</div>
+</div>
+<div id="tab-nueva" class="tc active">
+  <div class="card">
+    <h2>Nueva Reserva</h2>
+    <div class="fg"><label>Apartamento</label><select id="apt" onchange="calcTotal()"><option value="1">Apartamento Albatros</option><option value="2">Villa Clara</option></select></div>
+    <div class="r2">
+      <div class="fg"><label>Nombre Huesped</label><input type="text" id="guest" placeholder="Nombre y apellidos"></div>
+      <div class="fg"><label>Num Huespedes</label><input type="number" id="ng" placeholder="1" min="1" max="20"></div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Entrada</label><input type="date" id="cin" onchange="calcTotal()"></div>
+      <div class="fg"><label>Salida</label><input type="date" id="cout" onchange="calcTotal()"></div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Precio Noche EUR</label><input type="number" id="pn" placeholder="0" min="0" oninput="calcTotal()"></div>
+      <div class="fg"><label>Limpieza EUR</label><input type="number" id="pc" placeholder="0" min="0" oninput="calcTotal()"></div>
+    </div>
+    <div id="ca" class="ca"><strong>Fechas no disponibles - </strong><span id="cm"></span></div>
+    <div class="dbox">
+      <label>Deposito recibido para reservar fechas</label>
+      <input type="number" id="dep" placeholder="0" min="0" oninput="calcTotal()">
+    </div>
+    <div class="fg"><label>Observaciones</label><textarea id="obs" placeholder="Notas internas, peticiones especiales..."></textarea></div>
+    <div class="tbox">
+      <div class="tlabel">Total Reserva</div>
+      <div class="tamount" id="td">EUR 0</div>
+      <div class="tgbp" id="tg"></div>
+      <div class="trate" id="tr"></div>
+      <div id="tbd"></div>
+    </div>
+    <button class="btn btn-p" onclick="addR()">Guardar Reserva</button>
+  </div>
+</div>
+<div id="tab-reservas" class="tc">
+  <div class="bbar">
+    <p><strong>Copia de seguridad</strong>Exporta o importa tus reservas</p>
+    <div class="bbtns">
+      <button class="bbtn bbtn-e" onclick="exportR()">Exportar</button>
+      <button class="bbtn bbtn-i" onclick="document.getElementById('impf').click()">Importar</button>
+      <input type="file" id="impf" accept=".json" style="display:none" onchange="importR(event)">
+    </div>
+  </div>
+  <div class="fr">
+    <button class="fb active" onclick="filtR('todas',this)">Todas</button>
+    <button class="fb" onclick="filtR('1',this)">Albatros</button>
+    <button class="fb" onclick="filtR('2',this)">Villa Clara</button>
+    <button class="fb" onclick="filtR('proximas',this)">Proximas</button>
+  </div>
+  <div id="rl"></div>
+</div>
+<div id="tab-cal" class="tc">
+  <div class="ch">
+    <button class="cn" onclick="chgM(-1)">&#8249;</button>
+    <h2 id="ct"></h2>
+    <button class="cn" onclick="chgM(1)">&#8250;</button>
+  </div>
+  <div class="cleg">
+    <div class="li"><div class="ld" style="background:rgba(44,110,138,0.4)"></div><span>Albatros</span></div>
+    <div class="li"><div class="ld" style="background:rgba(196,133,90,0.4)"></div><span>Villa Clara</span></div>
+  </div>
+  <div class="cg">
+    <div class="cdh"><div class="cdn">L</div><div class="cdn">M</div><div class="cdn">X</div><div class="cdn">J</div><div class="cdn">V</div><div class="cdn">S</div><div class="cdn">D</div></div>
+    <div class="cd" id="cd"></div>
+  </div>
+</div>
+<div id="tab-ingresos" class="tc">
+  <div class="yr-sel">
+    <button class="yr-btn" onclick="chgY(-1)">&#8249;</button>
+    <h2 id="yr-title">2025</h2>
+    <button class="yr-btn" onclick="chgY(1)">&#8250;</button>
+  </div>
+  <div class="total-anual">
+    <div class="ta-label">Total ano</div>
+    <div class="ta-amount" id="ta-total">EUR 0</div>
+    <div class="ta-split">
+      <div class="ta-apt"><div class="ta-apt-name">Albatros</div><div class="ta-apt-val v1" id="ta-apt1">EUR 0</div></div>
+      <div style="width:1px;background:rgba(255,255,255,0.15)"></div>
+      <div class="ta-apt"><div class="ta-apt-name">Villa Clara</div><div class="ta-apt-val v2" id="ta-apt2">EUR 0</div></div>
+    </div>
+  </div>
+  <div id="months-list"></div>
+</div>
+<div id="eo" class="mo" style="display:none">
+  <div class="mb">
+    <h3>Editar Reserva</h3>
+    <div class="msub" id="esub"></div>
+    <div class="econf" id="econf"></div>
+    <div class="fg"><label>Apartamento</label><select id="eapt" onchange="calcET()"><option value="1">Apartamento Albatros</option><option value="2">Villa Clara</option></select></div>
+    <div class="r2">
+      <div class="fg"><label>Nombre Huesped</label><input type="text" id="eg"></div>
+      <div class="fg"><label>Num Huespedes</label><input type="number" id="eng" min="1" max="20"></div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Entrada</label><input type="date" id="ecin" onchange="calcET()"></div>
+      <div class="fg"><label>Salida</label><input type="date" id="ecout" onchange="calcET()"></div>
+    </div>
+    <div class="r2">
+      <div class="fg"><label>Precio Noche</label><input type="number" id="epn" min="0" oninput="calcET()"></div>
+      <div class="fg"><label>Limpieza</label><input type="number" id="epc" min="0" oninput="calcET()"></div>
+    </div>
+    <div class="dbox"><label>Deposito recibido</label><input type="number" id="edep" placeholder="0" min="0" oninput="calcET()"></div>
+    <div class="fg"><label>Observaciones</label><textarea id="eobs" placeholder="Notas internas..."></textarea></div>
+    <div class="et">
+      <div class="etl">Total Reserva</div>
+      <div class="eta" id="eta">EUR 0</div>
+      <div style="font-size:0.9rem;opacity:0.6;margin-top:2px" id="etg"></div>
+      <div class="etd" id="etd"></div>
+    </div>
+    <div class="mbtns">
+      <button class="bcanc" onclick="closeE()">Cancelar</button>
+      <button class="bsave" onclick="saveE()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+<div id="co" class="mo" style="display:none">
+  <div class="cb">
+    <h3>Cancelar reserva?</h3>
+    <p id="cp"></p>
+    <div class="mbtns">
+      <button class="bkeep" onclick="closeC()">No, mantener</button>
+      <button class="bdeld" onclick="confDel()">Si, eliminar</button>
+    </div>
+  </div>
+</div>
+<script>
+var FBC={apiKey:"AIzaSyBnvynRMQjyOWHNr5_H_wXCjGsCq3ZhPYI",authDomain:"mis-apartamentos-1d6df.firebaseapp.com",databaseURL:"https://mis-apartamentos-1d6df-default-rtdb.europe-west1.firebasedatabase.app",projectId:"mis-apartamentos-1d6df"};
+var db=null,userKey=null,reservas=[],filt="todas";
+var calY=new Date().getFullYear(),calM=new Date().getMonth(),ingY=new Date().getFullYear();
+var delId=null,editId=null,gbp=null,useFB=false;
+
+function setupApp(){
+  var k=document.getElementById("setup-key").value.trim();
+  if(!k||k.length<4){alert("Escribe una clave de al menos 4 caracteres");return;}
+  userKey=k.replace(/[^a-zA-Z0-9]/g,"-");
+  localStorage.setItem("apt_key",userKey);
+  startApp();
+}
+
+function startApp(){
+  document.getElementById("setup").style.display="none";
+  setSS("syncing","Conectando...");
+  setTimeout(function(){
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(FBC);
+    db=firebase.database();
+    useFB=true;
+    db.ref("r/"+userKey).on("value",function(s){
+      var d=s.val();
+      reservas=d?Object.values(d):[];
+      setSS("online","Sincronizado");
+      renderR();renderCal();renderIngresos();
+    },function(){useFB=false;setSS("offline","Sin conexion");loadL();});
+  }catch(e){useFB=false;setSS("offline","Local");loadL();}
+  },100);
+}
+
+function loadL(){reservas=JSON.parse(localStorage.getItem("apt_"+userKey)||"[]");renderR();renderCal();renderIngresos();}
+function saveL(){localStorage.setItem("apt_"+userKey,JSON.stringify(reservas));}
+
+function fbSave(r){
+  setSS("syncing","Guardando...");
+  if(useFB){db.ref("r/"+userKey+"/"+r.id).set(r).then(function(){saveL();setSS("online","Sincronizado");}).catch(function(){saveL();setSS("offline","Sin conexion");});}
+  else{saveL();}
+}
+
+function fbDel(id){
+  if(useFB){db.ref("r/"+userKey+"/"+id).remove().then(function(){saveL();setSS("online","Sincronizado");}).catch(function(){saveL();});}
+  else{saveL();}
+}
+
+function setSS(s,t){document.getElementById("sd").className="sdot "+s;document.getElementById("st").textContent=t;}
+
+function fetchGBP(){
+  fetch("https://api.frankfurter.app/latest?from=EUR&to=GBP")
+    .then(function(r){return r.json();})
+    .then(function(d){gbp=d.rates.GBP;calcTotal();})
+    .catch(function(){gbp=0.856;});
+}
+
+function gbpT(e){if(!gbp||e<=0)return"";return"GBP "+(e*gbp).toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function aptN(a){return a==="1"?"Apartamento Albatros":"Villa Clara";}
+function fmt(s){var p=s.split("-");return p[2]+"/"+p[1]+"/"+p[0];}
+function eur(v){return"EUR "+v.toLocaleString("es-ES",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function hasC(apt,ci,co,exId){return reservas.find(function(r){return r.id!==exId&&r.apt===apt&&ci<r.checkout&&co>r.checkin;})||null;}
+
+function showTab(n,el){
+  document.querySelectorAll(".tc").forEach(function(t){t.classList.remove("active");});
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
+  document.getElementById("tab-"+n).classList.add("active");
+  el.classList.add("active");
+  if(n==="reservas")renderR();
+  if(n==="cal")renderCal();
+  if(n==="ingresos")renderIngresos();
+}
+
+function calcTotal(){
+  var ci=document.getElementById("cin").value,co=document.getElementById("cout").value,apt=document.getElementById("apt").value;
+  var pn=parseFloat(document.getElementById("pn").value)||0,pc=parseFloat(document.getElementById("pc").value)||0,dep=parseFloat(document.getElementById("dep").value)||0;
+  var al=document.getElementById("ca");
+  if(ci&&co&&ci<co){
+    var c=hasC(apt,ci,co,null);
+    if(c){al.style.display="block";document.getElementById("cm").textContent=aptN(apt)+" ocupado por "+c.guest+" del "+fmt(c.checkin)+" al "+fmt(c.checkout);}
+    else al.style.display="none";
+    var ni=Math.round((new Date(co)-new Date(ci))/86400000),sub=ni*pn+pc,pen=sub-dep;
+    document.getElementById("td").textContent=eur(sub);
+    var g=gbpT(sub);
+    document.getElementById("tg").textContent=g?g+" (libras)":"";
+    document.getElementById("tr").textContent=gbp?"Cambio: 1 EUR = GBP "+gbp.toFixed(4):"";
+    var h="<div class='tbd'><div class='brow'><span>"+ni+" noches x "+pn+"</span><span>"+eur(ni*pn)+"</span></div><div class='brow'><span>Limpieza</span><span>"+eur(pc)+"</span></div>";
+    if(dep>0){h+="<div class='brow dr'><span>Deposito recibido</span><span>-"+eur(dep)+"</span></div><div class='brow pr'><span>Resto pendiente</span><span>"+eur(Math.max(0,pen))+"</span></div>";}
+    else{h+="<div class='brow pr'><span>Pendiente de cobro</span><span>"+eur(sub)+"</span></div>";}
+    document.getElementById("tbd").innerHTML=h+"</div>";
+  }else{
+    al.style.display="none";
+    document.getElementById("td").textContent="EUR 0";
+    document.getElementById("tg").textContent="";
+    document.getElementById("tr").textContent="";
+    document.getElementById("tbd").innerHTML="<div style='font-size:0.75rem;opacity:0.6;margin-top:6px'>Introduce las fechas y precios</div>";
+  }
+}
+
+function addR(){
+  var apt=document.getElementById("apt").value,guest=document.getElementById("guest").value.trim();
+  var ci=document.getElementById("cin").value,co=document.getElementById("cout").value;
+  var pn=parseFloat(document.getElementById("pn").value)||0,pc=parseFloat(document.getElementById("pc").value)||0,dep=parseFloat(document.getElementById("dep").value)||0;
+  var ng=parseInt(document.getElementById("ng").value)||1,obs=document.getElementById("obs").value.trim();
+  if(!guest){toast("Introduce el nombre del huesped");return;}
+  if(!ci||!co||ci>=co){toast("Comprueba las fechas");return;}
+  var c=hasC(apt,ci,co,null);
+  if(c){toast("Fechas ocupadas por "+c.guest);return;}
+  var ni=Math.round((new Date(co)-new Date(ci))/86400000),total=ni*pn+pc,pend=total-dep;
+  var r={id:Date.now(),apt:apt,guest:guest,numGuests:ng,checkin:ci,checkout:co,night:pn,cleaning:pc,deposito:dep,total:total,pendiente:pend,nights:ni,obs:obs};
+  reservas.push(r);fbSave(r);
+  toast("Reserva guardada");
+  document.getElementById("guest").value="";document.getElementById("ng").value="";
+  document.getElementById("dep").value="";document.getElementById("obs").value="";
+  calcTotal();
+}
+
+function filtR(f,btn){filt=f;document.querySelectorAll(".fb").forEach(function(b){b.classList.remove("active");});btn.classList.add("active");renderR();}
+
+function renderR(){
+  var el=document.getElementById("rl"),ts=new Date().toISOString().split("T")[0];
+  var list=reservas.slice().sort(function(a,b){return a.checkin.localeCompare(b.checkin);});
+  if(filt==="1")list=list.filter(function(r){return r.apt==="1";});
+  else if(filt==="2")list=list.filter(function(r){return r.apt==="2";});
+  else if(filt==="proximas")list=list.filter(function(r){return r.checkout>=ts;});
+  if(!list.length){el.innerHTML="<div class='es'><div class='ic'>&#127958;</div><p>No hay reservas</p></div>";return;}
+  var h="";
+  for(var i=0;i<list.length;i++){
+    var r=list[i],a2=r.apt==="2",dep=r.deposito||0,pen=r.total-dep,ng=r.numGuests||1,g=gbpT(r.total);
+    var dh="";
+    if(dep>0){
+      dh="<div style='margin:8px 0 4px;font-size:0.78rem;color:#555;line-height:1.6'>";
+      dh+="<div style='display:flex;justify-content:space-between'><span>Noches ("+r.nights+"x"+r.night+")</span><span>"+eur(r.nights*r.night)+"</span></div>";
+      dh+="<div style='display:flex;justify-content:space-between'><span>Limpieza</span><span>"+eur(r.cleaning)+"</span></div>";
+      dh+="<div style='display:flex;justify-content:space-between;color:#3D7A62;font-weight:500'><span>Deposito</span><span>-"+eur(dep)+"</span></div>";
+      dh+="<div style='display:flex;justify-content:space-between;font-weight:600;border-top:1px solid #eee;padding-top:4px;margin-top:2px'><span>Resto pendiente</span><span style='color:#A0522D'>"+eur(Math.max(0,pen))+"</span></div></div>";
+    }else{dh="<div style='margin-top:4px'><span class='ndep'>Sin deposito</span></div>";}
+    var oh=r.obs?"<div class='obs-box'>"+r.obs+"</div>":"";
+    var rid=r.id;
+    h+="<div class='ri"+(a2?" a2":"")+"'>";
+    h+="<div class='rh'><div class='rg'>"+r.guest+"</div><span class='ra "+(a2?"ra2":"ra1")+"'>"+(a2?"Villa Clara":"Albatros")+"</span></div>";
+    h+="<div class='rd'>"+fmt(r.checkin)+" a "+fmt(r.checkout)+" - "+ng+" "+(ng===1?"huesped":"huespedes")+"</div>";
+    h+="<div style='display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px'><div class='rt'>Total: "+eur(r.total)+"</div><div class='rn'>"+(g?g+" - ":"")+r.nights+" noches</div></div>";
+    h+=dh+oh;
+    h+="<div style='margin-top:10px;text-align:right'>";
+    h+="<button class=\"bedit\" data-id=\""+rid+"\" onclick=\"openE(this.dataset.id*1)\">Editar</button>";
+    h+="<button class=\"bdel\" data-id=\""+rid+"\" onclick=\"askD(this.dataset.id*1)\">Cancelar reserva</button>";
+    h+="</div></div>";
+  }
+  el.innerHTML=h;
+}
+
+function askD(id){
+  delId=id;
+  var r=reservas.find(function(x){return x.id===id;});
+  document.getElementById("cp").textContent="Se eliminara la reserva de "+(r?r.guest:"este huesped")+".";
+  document.getElementById("co").style.display="flex";
+}
+function closeC(){document.getElementById("co").style.display="none";delId=null;}
+function confDel(){
+  if(delId){var id=delId;reservas=reservas.filter(function(r){return r.id!==id;});fbDel(id);closeC();renderR();renderCal();renderIngresos();toast("Reserva eliminada");}
+}
+
+function openE(id){
+  var r=reservas.find(function(x){return x.id===id;});if(!r)return;
+  editId=id;
+  document.getElementById("esub").textContent="Reserva de "+r.guest;
+  document.getElementById("eapt").value=r.apt;document.getElementById("eg").value=r.guest;
+  document.getElementById("eng").value=r.numGuests||1;document.getElementById("ecin").value=r.checkin;
+  document.getElementById("ecout").value=r.checkout;document.getElementById("epn").value=r.night;
+  document.getElementById("epc").value=r.cleaning;document.getElementById("edep").value=r.deposito||"";
+  document.getElementById("eobs").value=r.obs||"";
+  document.getElementById("econf").style.display="none";
+  calcET();document.getElementById("eo").style.display="flex";
+}
+function closeE(){document.getElementById("eo").style.display="none";editId=null;}
+
+function calcET(){
+  var ci=document.getElementById("ecin").value,co=document.getElementById("ecout").value,apt=document.getElementById("eapt").value;
+  var pn=parseFloat(document.getElementById("epn").value)||0,pc=parseFloat(document.getElementById("epc").value)||0,dep=parseFloat(document.getElementById("edep").value)||0;
+  var ce=document.getElementById("econf");
+  if(ci&&co&&ci<co){
+    var c=hasC(apt,ci,co,editId);
+    if(c){ce.style.display="block";ce.textContent="Fechas ocupadas por "+c.guest+" ("+fmt(c.checkin)+" - "+fmt(c.checkout)+")";}
+    else ce.style.display="none";
+    var ni=Math.round((new Date(co)-new Date(ci))/86400000),sub=ni*pn+pc,pen=sub-dep;
+    document.getElementById("eta").textContent=eur(sub);
+    var g=gbpT(sub);document.getElementById("etg").textContent=g?g+" (libras)":"";
+    var dt=ni+" noches x "+pn+" + "+pc+" limpieza";
+    if(dep>0)dt+="\nDeposito: -"+eur(dep)+" -> Pendiente: "+eur(Math.max(0,pen));
+    document.getElementById("etd").textContent=dt;
+  }else{ce.style.display="none";document.getElementById("eta").textContent="EUR 0";document.getElementById("etd").textContent="";}
+}
+
+function saveE(){
+  var apt=document.getElementById("eapt").value,guest=document.getElementById("eg").value.trim();
+  var ci=document.getElementById("ecin").value,co=document.getElementById("ecout").value;
+  var pn=parseFloat(document.getElementById("epn").value)||0,pc=parseFloat(document.getElementById("epc").value)||0,dep=parseFloat(document.getElementById("edep").value)||0;
+  var ng=parseInt(document.getElementById("eng").value)||1,obs=document.getElementById("eobs").value.trim();
+  if(!guest){toast("Introduce el nombre del huesped");return;}
+  if(!ci||!co||ci>=co){toast("Comprueba las fechas");return;}
+  var c=hasC(apt,ci,co,editId);if(c){toast("Fechas ocupadas por "+c.guest);return;}
+  var ni=Math.round((new Date(co)-new Date(ci))/86400000),total=ni*pn+pc,pend=total-dep;
+  var idx=reservas.findIndex(function(r){return r.id===editId;});
+  if(idx!==-1){
+    reservas[idx]=Object.assign({},reservas[idx],{apt:apt,guest:guest,numGuests:ng,checkin:ci,checkout:co,night:pn,cleaning:pc,deposito:dep,total:total,pendiente:pend,nights:ni,obs:obs});
+    fbSave(reservas[idx]);closeE();renderIngresos();toast("Reserva actualizada");
+  }
+}
+
+function chgM(d){calM+=d;if(calM>11){calM=0;calY++;}if(calM<0){calM=11;calY--;}renderCal();}
+
+function renderCal(){
+  var mn=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  document.getElementById("ct").textContent=mn[calM]+" "+calY;
+  var fd=new Date(calY,calM,1).getDay(),off=fd===0?6:fd-1,days=new Date(calY,calM+1,0).getDate(),ts=new Date().toISOString().split("T")[0];
+  var h="";
+  for(var i=0;i<off;i++)h+="<div class='cday empty'></div>";
+  for(var d=1;d<=days;d++){
+    var ds=calY+"-"+String(calM+1).padStart(2,"0")+"-"+String(d).padStart(2,"0"),dots="";
+    for(var j=0;j<reservas.length;j++){var rv=reservas[j];if(rv.checkin<=ds&&rv.checkout>ds)dots+="<div class='dd "+(rv.apt==="1"?"dd1":"dd2")+"'>"+rv.guest.split(" ")[0]+"</div>";}
+    h+="<div class='cday"+(ds===ts?" today":"")+"'><div class='dn'>"+d+"</div><div class='dbs'>"+dots+"</div></div>";
+  }
+  document.getElementById("cd").innerHTML=h;
+}
+
+function chgY(d){ingY+=d;renderIngresos();}
+
+function renderIngresos(){
+  document.getElementById("yr-title").textContent=ingY;
+  var mn=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  var totalAno=0,total1=0,total2=0,meses=[];
+  for(var m=0;m<12;m++){
+    var t=0,t1=0,t2=0,count=0;
+    for(var i=0;i<reservas.length;i++){
+      var r=reservas[i],yr=parseInt(r.checkin.split("-")[0]),mo=parseInt(r.checkin.split("-")[1])-1;
+      if(yr===ingY&&mo===m){t+=r.total;count++;if(r.apt==="1")t1+=r.total;else t2+=r.total;}
+    }
+    totalAno+=t;total1+=t1;total2+=t2;
+    meses.push({name:mn[m],total:t,t1:t1,t2:t2,count:count});
+  }
+  document.getElementById("ta-total").textContent=eur(totalAno);
+  document.getElementById("ta-apt1").textContent=eur(total1);
+  document.getElementById("ta-apt2").textContent=eur(total2);
+  var maxVal=0;
+  for(var i=0;i<meses.length;i++){if(meses[i].total>maxVal)maxVal=meses[i].total;}
+  var activos=meses.filter(function(x){return x.total>0;});
+  if(!activos.length){document.getElementById("months-list").innerHTML="<div class='mc-nodata'>No hay reservas en "+ingY+"</div>";return;}
+  var h="";
+  for(var i=0;i<meses.length;i++){
+    var mes=meses[i];if(mes.total===0)continue;
+    var p1=maxVal>0?Math.round(mes.t1/maxVal*100):0,p2=maxVal>0?Math.round(mes.t2/maxVal*100):0;
+    h+="<div class='month-card'><div class='mc-header'><div class='mc-month'>"+mes.name+"</div><div class='mc-total'>"+eur(mes.total)+"</div></div>";
+    if(mes.t1>0)h+="<div class='mc-bar-row'><div class='mc-bar-label'>Albatros</div><div class='mc-bar-wrap'><div class='mc-bar-fill b1' style='width:"+p1+"%'></div></div><div class='mc-bar-val'>"+eur(mes.t1)+"</div></div>";
+    if(mes.t2>0)h+="<div class='mc-bar-row'><div class='mc-bar-label'>Villa Clara</div><div class='mc-bar-wrap'><div class='mc-bar-fill b2' style='width:"+p2+"%'></div></div><div class='mc-bar-val'>"+eur(mes.t2)+"</div></div>";
+    h+="<div class='mc-detail'><span>"+mes.count+" reserva"+(mes.count!==1?"s":"")+"</span>";
+    if(mes.t1>0&&mes.t2>0)h+="<span>Albatros "+Math.round(mes.t1/mes.total*100)+"% - Clara "+Math.round(mes.t2/mes.total*100)+"%</span>";
+    h+="</div></div>";
+  }
+  document.getElementById("months-list").innerHTML=h;
+}
+
+function exportR(){
+  if(!reservas.length){toast("No hay reservas para exportar");return;}
+  var f=new Date().toISOString().split("T")[0],b=new Blob([JSON.stringify(reservas,null,2)],{type:"application/json"}),u=URL.createObjectURL(b),a=document.createElement("a");
+  a.href=u;a.download="reservas-"+f+".json";a.click();URL.revokeObjectURL(u);toast(reservas.length+" reservas exportadas");
+}
+
+function importR(ev){
+  var file=ev.target.files[0];if(!file)return;
+  var rd=new FileReader();
+  rd.onload=function(e){
+    try{var d=JSON.parse(e.target.result);if(!Array.isArray(d))throw new Error();
+    var ids=reservas.map(function(r){return r.id;});
+    var nw=d.filter(function(r){return ids.indexOf(r.id)===-1;});
+    nw.forEach(function(r){reservas.push(r);fbSave(r);});toast(nw.length+" reservas importadas");}
+    catch(e){toast("Archivo no valido");}ev.target.value="";
+  };rd.readAsText(file);
+}
+
+function toast(m){var o=document.querySelector(".toast");if(o)o.remove();var t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},2600);}
+
+var sk=localStorage.getItem("apt_key");
+if(sk){userKey=sk;startApp();}
+var now=new Date();
+document.getElementById("cin").value=now.toISOString().split("T")[0];
+var tom=new Date(now);tom.setDate(tom.getDate()+1);
+document.getElementById("cout").value=tom.toISOString().split("T")[0];
+fetchGBP();renderCal();renderIngresos();
+</script>
+</body>
+</html>
